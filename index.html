@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1628" />
+  <meta name="description" content="গ্যাস ফিল্ড ওয়ার্ক অর্ডার ডিজিটাল লগবুক" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GF LogBook" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>GasField WorkOrder LogBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 2L4 8v12l10 6 10-6V8L14 2z" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+            <path d="M14 8v8M10 10l4 6 4-6" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">GasField LogBook</div>
+          <div class="brand-sub">Work Order Management System</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="sync-indicator" id="syncIndicator" title="Sync status">
+          <span class="sync-dot" id="syncDot"></span>
+          <span class="sync-text" id="syncText">সংযোগ হচ্ছে...</span>
+        </span>
+        <button class="btn-icon" id="btnExportImport" title="Export / Import">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        </button>
+        <button class="btn-icon" id="btnLogin" title="অ্যাডমিন লগইন">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <button class="btn-icon" id="btnInstall" title="অ্যাপ ইন্সটল করুন" style="display:none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v13M7 11l5 5 5-5"/><path d="M4 18h16v3H4z"/></svg>
+        </button>
+        <button class="btn-icon" id="btnTheme" title="থিম পরিবর্তন">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <button class="btn-primary" id="btnNewOrder">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          <span>নতুন এন্ট্রি</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-num" id="statTotal">0</span>
+      <span class="stat-label">মোট এন্ট্রি</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-num" id="statThisMonth">0</span>
+      <span class="stat-label">এই মাসে</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-num" id="statCategories">0</span>
+      <span class="stat-label">ক্যাটাগরি</span>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <!-- FILTER & SEARCH BAR -->
+    <div class="control-bar">
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="সমস্যা, সমাধান বা ক্যাটাগরি দিয়ে খুঁজুন..." />
+        <button class="clear-search" id="clearSearch" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="filter-group">
+        <select class="filter-select" id="categoryFilter">
+          <option value="">সব ক্যাটাগরি</option>
+        </select>
+        <button class="sort-btn active" id="sortDesc" title="নতুন আগে">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 16l4 4 4-4M7 4v16"/><path d="M11 8h8M11 12h6M11 16h4"/></svg>
+          নতুন
+        </button>
+        <button class="sort-btn" id="sortAsc" title="পুরনো আগে">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l4-4 4 4M7 20V4"/><path d="M11 8h8M11 12h6M11 16h4"/></svg>
+          পুরনো
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTIVE FILTERS -->
+    <div class="active-filters" id="activeFilters" style="display:none"></div>
+
+    <!-- WORK ORDER LIST -->
+    <div class="orders-grid" id="ordersGrid">
+      <!-- Empty state -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <rect x="8" y="12" width="48" height="44" rx="4" stroke="#374151" stroke-width="2"/>
+            <path d="M20 24h24M20 32h24M20 40h16" stroke="#374151" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="48" cy="48" r="10" fill="#0a1628" stroke="#f59e0b" stroke-width="2"/>
+            <path d="M48 44v4l2 2" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>কোনো এন্ট্রি নেই</h3>
+        <p>নতুন ওয়ার্ক অর্ডার যোগ করতে উপরের <strong>"নতুন এন্ট্রি"</strong> বাটনে ক্লিক করুন</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL BACKDROP -->
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+
+  <!-- ADD/EDIT MODAL -->
+  <div class="modal" id="orderModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">নতুন ওয়ার্ক অর্ডার</h2>
+      <button class="modal-close" id="modalClose" aria-label="বন্ধ করুন">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="orderForm" novalidate>
+        <input type="hidden" id="editId" />
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="fieldDate">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              কার্যসম্পাদনের তারিখ <span class="req">*</span>
+            </label>
+            <input type="date" id="fieldDate" class="form-control" required />
+            <span class="field-error" id="errDate"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fieldCategory">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>
+              ক্যাটাগরি <span class="req">*</span>
+            </label>
+            <div class="category-input-wrap">
+              <input type="text" id="fieldCategory" class="form-control" list="categoryList" placeholder="ক্যাটাগরি লিখুন বা বেছে নিন" required />
+              <datalist id="categoryList"></datalist>
+            </div>
+            <span class="field-error" id="errCategory"></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fieldProblem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            সমস্যার বিবরণ <span class="req">*</span>
+          </label>
+          <textarea id="fieldProblem" class="form-control form-textarea" rows="3" placeholder="সমস্যার বিস্তারিত বিবরণ লিখুন..." required></textarea>
+          <span class="field-error" id="errProblem"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fieldSolution">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M22 11.08V12a10 10 0 11-5.93-9.14"/></svg>
+            সমাধানের বিবরণ <span class="req">*</span>
+          </label>
+          <textarea id="fieldSolution" class="form-control form-textarea" rows="3" placeholder="গৃহীত সমাধান ব্যবস্থার বিবরণ লিখুন..." required></textarea>
+          <span class="field-error" id="errSolution"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fieldImage">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            নির্দেশপত্রের ছবি (ঐচ্ছিক)
+          </label>
+          <div class="image-upload-zone" id="uploadZone">
+            <input type="file" id="fieldImage" accept="image/*" class="file-input" />
+            <div class="upload-placeholder" id="uploadPlaceholder">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              <p>ছবি আপলোড করতে ক্লিক করুন বা টেনে আনুন</p>
+              <span>JPG, PNG, WEBP (সর্বোচ্চ ৫MB)</span>
+            </div>
+            <div class="image-preview" id="imagePreview" style="display:none">
+              <img id="previewImg" src="" alt="প্রিভিউ" />
+              <button type="button" class="remove-img" id="removeImg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <span class="field-error" id="errImage"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fieldNotes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            অতিরিক্ত মন্তব্য (ঐচ্ছিক)
+          </label>
+          <textarea id="fieldNotes" class="form-control form-textarea" rows="2" placeholder="অন্য কোনো প্রয়োজনীয় তথ্য..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="btnCancel">বাতিল</button>
+          <button type="submit" class="btn-save" id="btnSave">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+            সেভ করুন
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- VIEW MODAL -->
+  <div class="modal modal-view" id="viewModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div class="view-modal-meta">
+        <span class="view-category-badge" id="viewCategoryBadge"></span>
+        <span class="view-date" id="viewDate"></span>
+      </div>
+      <div class="view-modal-actions">
+        <button class="btn-icon-sm edit-btn" id="viewEditBtn" title="সম্পাদনা করুন">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn-icon-sm delete-btn" id="viewDeleteBtn" title="মুছে ফেলুন">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </button>
+        <button class="modal-close" id="viewModalClose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="view-section">
+        <div class="view-section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          সমস্যার বিবরণ
+        </div>
+        <div class="view-content" id="viewProblem"></div>
+      </div>
+      <div class="view-section">
+        <div class="view-section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M22 11.08V12a10 10 0 11-5.93-9.14"/></svg>
+          সমাধানের বিবরণ
+        </div>
+        <div class="view-content" id="viewSolution"></div>
+      </div>
+      <div class="view-section" id="viewNotesSection" style="display:none">
+        <div class="view-section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+          অতিরিক্ত মন্তব্য
+        </div>
+        <div class="view-content" id="viewNotes"></div>
+      </div>
+      <div class="view-image-section" id="viewImageSection" style="display:none">
+        <div class="view-section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          নির্দেশপত্রের ছবি
+        </div>
+        <img id="viewImage" src="" alt="নির্দেশপত্র" class="view-img" />
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRM MODAL -->
+  <div class="modal modal-sm" id="deleteModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 class="modal-title danger-title">এন্ট্রি মুছে ফেলুন</h2>
+    </div>
+    <div class="modal-body">
+      <p class="delete-confirm-text">এই ওয়ার্ক অর্ডার এন্ট্রিটি স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?</p>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="deleteCancelBtn">না, রাখুন</button>
+        <button class="btn-danger" id="deleteConfirmBtn">হ্যাঁ, মুছুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div class="modal modal-sm" id="loginModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 class="modal-title" id="loginModalTitle">অ্যাডমিন লগইন</h2>
+      <button class="modal-close" id="loginModalClose">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Logged out view -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">ইমেইল</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="admin@example.com" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">পাসওয়ার্ড</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+        <span class="field-error show" id="loginError" style="display:none"></span>
+        <div class="modal-footer" style="justify-content:flex-end;">
+          <button type="submit" class="btn-save" id="btnLoginSubmit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+            লগইন করুন
+          </button>
+        </div>
+      </form>
+
+      <!-- Logged in view -->
+      <div id="loggedInView" style="display:none">
+        <div class="logged-in-box">
+          <div class="logged-in-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div>
+            <div class="logged-in-label">লগইন করা আছে</div>
+            <div class="logged-in-email" id="loggedInEmail"></div>
+          </div>
+        </div>
+        <p class="login-note">আপনি এখন এন্ট্রি ডিলিট করতে পারবেন।</p>
+        <div class="modal-footer" style="justify-content:flex-end;">
+          <button type="button" class="btn-cancel" id="btnLogout">লগআউট করুন</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT / IMPORT MODAL -->
+  <div class="modal modal-sm" id="exportImportModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 class="modal-title">ব্যাকআপ / রিস্টোর</h2>
+      <button class="modal-close" id="eiModalClose">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="ei-section">
+        <div class="ei-icon export-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        </div>
+        <div class="ei-text">
+          <div class="ei-title">এক্সপোর্ট (Export)</div>
+          <div class="ei-desc">সব এন্ট্রি একটা JSON ফাইলে ডাউনলোড করুন — ব্যাকআপ বা অন্য ডিভাইসে নেওয়ার জন্য</div>
+        </div>
+        <button class="btn-save" id="btnExportData">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+          ডাউনলোড
+        </button>
+      </div>
+
+      <div class="ei-divider"></div>
+
+      <div class="ei-section">
+        <div class="ei-icon import-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+        </div>
+        <div class="ei-text">
+          <div class="ei-title">ইম্পোর্ট (Import)</div>
+          <div class="ei-desc">আগে এক্সপোর্ট করা JSON ফাইল থেকে এন্ট্রি যুক্ত করুন</div>
+        </div>
+        <label class="btn-save file-label" for="importFileInput">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+          ফাইল বাছুন
+        </label>
+        <input type="file" id="importFileInput" accept=".json" style="display:none" />
+      </div>
+
+      <div class="ei-note" id="eiNote" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- IMPORT CONFIRM MODAL -->
+  <div class="modal modal-sm" id="importConfirmModal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 class="modal-title">ইম্পোর্ট নিশ্চিত করুন</h2>
+    </div>
+    <div class="modal-body">
+      <p class="delete-confirm-text" id="importConfirmText"></p>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="importCancelBtn">বাতিল</button>
+        <button class="btn-save" id="importConfirmBtn">হ্যাঁ, ইম্পোর্ট করুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
